@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collector Dashboard | BlockCycle</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="dashboard-container">
+    <div class="sidebar">
+        <h2>♻️ BlockCycle</h2>
+        <div class="sidebar-nav">
+            <a onclick="showSection('overview')" id="nav-overview" class="active">Overview</a>
+            <a onclick="showSection('pendingChecks')" id="nav-pendingChecks">Pending Pre-checks</a>
+            <a onclick="showSection('completedChecks')" id="nav-completedChecks">Completed Checks</a>
+            <a href="login.html" style="margin-top: 50px; background: rgba(255,0,0,0.1);">Logout</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div id="overview" class="section">
+            <div class="card">
+                <h1>Collector Portal 🚛</h1>
+                <p>Verify the physical presence and condition of submitted e-waste.</p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h4>Available for Check</h4>
+                    <div class="value" id="stat-pending">0</div>
+                </div>
+                <div class="stat-card">
+                    <h4>My Verified Items</h4>
+                    <div class="value" id="stat-completed">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="pendingChecks" class="section" style="display:none;">
+            <div class="card">
+                <h2>Items Awaiting Physical Pre-check</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>User</th>
+                            <th>Device</th>
+                            <th>Location</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pendingTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="completedChecks" class="section" style="display:none;">
+            <div class="card">
+                <h2>Completed Pre-checks</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Device</th>
+                            <th>Status</th>
+                            <th>Blockchain Update</th>
+                        </tr>
+                    </thead>
+                    <tbody id="completedTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Verification Modal (Simple simulated) -->
+<div id="verifyModal" class="modal-overlay">
+    <div class="modal-content">
+        <h3>Physical Pre-check Verification</h3>
+        <p id="modalDeviceName" class="subtitle"></p>
+        <label>Physical Condition</label>
+        <select id="precheckCondition">
+            <option>Intact</option>
+            <option>Slightly Damaged</option>
+            <option>Severely Damaged</option>
+            <option>Non-functional / Parts Missing</option>
+        </select>
+        <label>Presence Verified</label>
+        <select id="precheckPresence">
+            <option value="yes">Yes, Item exists at location</option>
+            <option value="no">No, Item not found</option>
+        </select>
+
+        <div class="mt-20">
+            <button onclick="savePrecheck()" style="width: 100%;">Confirm Verification</button>
+            <button onclick="closeModal()" style="width: 100%; background:#666; margin-top:10px;">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentId = "";
+    
+    function showSection(id) {
+        document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
+        document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+        document.getElementById(id).style.display = 'block';
+        document.getElementById('nav-' + id).classList.add('active');
+        if(id === 'pendingChecks') loadPending();
+        if(id === 'completedChecks') loadCompleted();
+        if(id === 'overview') updateStats();
+    }
+
+    async function loadPending() {
+        const response = await fetch('get_submissions.php?role=collector');
+        const result = await response.json();
+        if(!result.success) return;
+
+        const pending = result.submissions;
+        const tbody = document.getElementById('pendingTableBody');
+        tbody.innerHTML = '';
+        pending.forEach(s => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${s.id}</td>
+                    <td>${s.user_email}</td>
+                    <td>${s.device_name}</td>
+                    <td>${s.location}</td>
+                    <td><button onclick="openModal('${s.id}', '${s.device_name}')" style="padding: 5px 10px; margin:0;">Verify</button></td>
+                </tr>
+            `;
+        });
+    }
+
+    async function loadCompleted() {
+        const response = await fetch('get_submissions.php?role=all');
+        const result = await response.json();
+        if(!result.success) return;
+
+        const completed = result.submissions.filter(s => s.status === 'Verified' || s.status === 'Approved' || s.status === 'Rejected');
+        const tbody = document.getElementById('completedTableBody');
+        tbody.innerHTML = '';
+        completed.forEach(s => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${s.id}</td>
+                    <td>${s.device_name}</td>
+                    <td><span class="badge badge-${s.status.toLowerCase()}">${s.status}</span></td>
+                    <td><code>${s.blockchain_hash}</code></td>
+                </tr>
+            `;
+        });
+    }
+
+    function openModal(id, name) {
+        currentId = id;
+        document.getElementById('modalDeviceName').innerText = "Verifying: " + name;
+        document.getElementById('verifyModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('verifyModal').style.display = 'none';
+    }
+
+    async function savePrecheck() {
+        const presence = document.getElementById('precheckPresence').value;
+        const status = (presence === 'yes') ? 'Verified' : 'Rejected';
+        
+        const response = await fetch('update_status.php', {
+            method: 'POST',
+            body: JSON.stringify({
+                id: currentId,
+                status: status
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert('Pre-check complete. Blockchain ledger updated.');
+            closeModal();
+            loadPending();
+        } else {
+            alert(result.message);
+        }
+    }
+
+    async function updateStats() {
+        const response = await fetch('get_submissions.php?role=all');
+        const result = await response.json();
+        if(!result.success) return;
+
+        const submissions = result.submissions;
+        document.getElementById('stat-pending').innerText = submissions.filter(s => s.status === 'Submitted').length;
+        document.getElementById('stat-completed').innerText = submissions.filter(s => s.status === 'Verified').length;
+    }
+
+    window.onload = () => showSection('overview');
+</script>
+
+</body>
+</html>

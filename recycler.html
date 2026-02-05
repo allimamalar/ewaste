@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recycler Marketplace | BlockCycle</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="dashboard-container">
+    <div class="sidebar">
+        <h2>♻️ BlockCycle</h2>
+        <div class="sidebar-nav">
+            <a onclick="showSection('overview')" id="nav-overview" class="active">Overview</a>
+            <a onclick="showSection('marketplace')" id="nav-marketplace">Marketplace</a>
+            <a onclick="showSection('myPurchases')" id="nav-myPurchases">My Inventory</a>
+            <a href="login.html" style="margin-top: 50px; background: rgba(255,0,0,0.1);">Logout</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <!-- OVERVIEW -->
+        <div id="overview" class="section">
+            <div class="card">
+                <h1>Recycler Portal 🏭</h1>
+                <p>Browse, purchase, and manage approved e-waste for sustainable recycling.</p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h4>Marketplace Items</h4>
+                    <div class="value" id="stat-market">0</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Items in Processing</h4>
+                    <div class="value" id="stat-processing">0</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Successfully Recycled</h4>
+                    <div class="value" id="stat-completed">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MARKETPLACE -->
+        <div id="marketplace" class="section" style="display:none;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Available Approved E-Waste</h2>
+                <span class="badge badge-verified">Direct from Blockchain</span>
+            </div>
+            <div id="marketplaceGrid" class="marketplace-grid">
+                <!-- Product cards will be injected here -->
+            </div>
+        </div>
+
+        <!-- MY PURCHASES / INVENTORY -->
+        <div id="myPurchases" class="section" style="display:none;">
+            <div class="card">
+                <h2>My Recycling Inventory</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Device</th>
+                            <th>Hazard</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Purchase Modal -->
+<div id="purchaseModal" class="modal-overlay">
+    <div class="modal-content text-center">
+        <h2 id="buyName">Confirm Purchase</h2>
+        <p id="buyPrice" style="font-size: 2.5rem; color: #2e8b57; font-weight: 700; margin: 20px 0;"></p>
+        <p style="color: #666; margin-bottom: 30px;">This transaction will be recorded on the blockchain ledger. Funds will be transferred to the sustainable recycling fund.</p>
+        
+        <div class="flex-gap">
+            <button onclick="confirmPurchase()" style="flex: 1;">Pay Now</button>
+            <button onclick="closeModal()" style="flex: 1; background: #666;">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentBuyId = "";
+    let currentUser = JSON.parse(localStorage.getItem('currentUser')) || { name: 'Recycler' };
+
+    function showSection(id) {
+        document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
+        document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+        document.getElementById(id).style.display = 'block';
+        document.getElementById('nav-' + id).classList.add('active');
+        if(id === 'marketplace') loadMarketplace();
+        if(id === 'myPurchases') loadInventory();
+        if(id === 'overview') updateStats();
+    }
+
+    async function loadMarketplace() {
+        const response = await fetch('get_submissions.php?role=recycler');
+        const result = await response.json();
+        if(!result.success) return;
+
+        const approvedItems = result.submissions;
+        const grid = document.getElementById('marketplaceGrid');
+        grid.innerHTML = '';
+
+        if (approvedItems.length === 0) {
+            grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 50px;">No approved items available for purchase at the moment.</p>';
+            return;
+        }
+
+        approvedItems.forEach(s => {
+            const img = s.image || 'https://via.placeholder.com/300x180?text=No+Image';
+
+            grid.innerHTML += `
+                <div class="product-card">
+                    <img src="${img}" class="product-image" alt="${s.device_name}">
+                    <div class="product-info">
+                        <div class="product-meta">${s.category} • ${s.id}</div>
+                        <h3>${s.device_name}</h3>
+                        <div class="product-price">$50.00</div>
+                        <div class="product-meta">Hazard: Low</div>
+                        <button class="btn-buy" onclick="openPurchaseModal('${s.id}', '${s.device_name}', '50')">Pay & Buy</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    async function loadInventory() {
+        const response = await fetch('get_submissions.php?role=all');
+        const result = await response.json();
+        if(!result.success) return;
+
+        // In a real app, we'd filter by buyer_email in SQL
+        const privateInventory = result.submissions.filter(s => s.status === 'Processing' || s.status === 'Recycled');
+        const tbody = document.getElementById('inventoryTableBody');
+        tbody.innerHTML = '';
+
+        if (privateInventory.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">Your private inventory is empty. Purchase items from the Marketplace.</td></tr>';
+            return;
+        }
+
+        privateInventory.forEach(s => {
+            let actionBtn = s.status === 'Processing' 
+                ? `<button onclick="updateRecycleStatus('${s.id}', 'Recycled')" style="padding: 5px 10px;">Mark Recycled</button>`
+                : `<span style="color: #2e8b57; font-weight: 600;">Completed ✓</span>`;
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>${s.id}</td>
+                    <td>${s.device_name}</td>
+                    <td>Verified</td>
+                    <td><span class="badge badge-${s.status.toLowerCase()}">${s.status}</span></td>
+                    <td>${actionBtn}</td>
+                </tr>
+            `;
+        });
+    }
+
+    function openPurchaseModal(id, name, price) {
+        currentBuyId = id;
+        document.getElementById('buyName').innerText = name;
+        document.getElementById('buyPrice').innerText = '$' + (price || '0');
+        document.getElementById('purchaseModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('purchaseModal').style.display = 'none';
+    }
+
+    async function confirmPurchase() {
+        const response = await fetch('update_status.php', {
+            method: 'POST',
+            body: JSON.stringify({
+                id: currentBuyId,
+                status: 'Processing'
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert('Payment Successful! Asset moved to your PRIVATE inventory.');
+            closeModal();
+            showSection('myPurchases');
+        } else {
+            alert(result.message);
+        }
+    }
+
+    async function updateRecycleStatus(id, status) {
+        const response = await fetch('update_status.php', {
+            method: 'POST',
+            body: JSON.stringify({
+                id: id,
+                status: status
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert(`Inventory and Ledger updated to ${status}.`);
+            loadInventory();
+        } else {
+            alert(result.message);
+        }
+    }
+
+    async function updateStats() {
+        const response = await fetch('get_submissions.php?role=all');
+        const result = await response.json();
+        if(!result.success) return;
+
+        const submissions = result.submissions;
+        document.getElementById('stat-market').innerText = submissions.filter(s => s.status === 'Approved').length;
+        document.getElementById('stat-processing').innerText = submissions.filter(s => s.status === 'Processing').length;
+        document.getElementById('stat-completed').innerText = submissions.filter(s => s.status === 'Recycled').length;
+    }
+
+    window.onload = () => showSection('overview');
+</script>
+
+</body>
+</html>

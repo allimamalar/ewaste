@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authority Dashboard | BlockCycle</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="dashboard-container">
+    <div class="sidebar">
+        <h2>♻️ BlockCycle</h2>
+        <div class="sidebar-nav">
+            <a onclick="showSection('overview')" id="nav-overview" class="active">Overview</a>
+            <a onclick="showSection('verificationQueue')" id="nav-verificationQueue">Verification Queue</a>
+            <a onclick="showSection('approvedList')" id="nav-approvedList">Approved for Recycling</a>
+            <a onclick="showSection('analytics')" id="nav-analytics">System Analytics</a>
+            <a href="login.html" style="margin-top: 50px; background: rgba(255,0,0,0.1);">Logout</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div id="overview" class="section">
+            <div class="card">
+                <h1>Authority Approval Portal 🏛️</h1>
+                <p>Final legal and hazard assessment of verified e-waste items.</p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h4>Awaiting Approval</h4>
+                    <div class="value" id="stat-awaiting">0</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Total Approved</h4>
+                    <div class="value" id="stat-approved">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="verificationQueue" class="section" style="display:none;">
+            <div class="card">
+                <h2>Items Awaiting Final Approval</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Device</th>
+                            <th>Owner Wallet</th>
+                            <th>Coll. Condition</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="queueTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="approvedList" class="section" style="display:none;">
+            <div class="card">
+                <h2>Approved & Assigned Items</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Device</th>
+                            <th>Hazard Level</th>
+                            <th>Blockchain Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="approvedTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="analytics" class="section" style="display:none;">
+            <div class="card">
+                <h2>System-wide Recycling Analytics</h2>
+                <div class="stats-grid">
+                    <div class="stat-card" style="border-left-color: #3b82f6;">
+                        <h4>Recycling Efficiency</h4>
+                        <div class="value">94.2%</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color: #ef4444;">
+                        <h4>Hazardous Waste Diverted</h4>
+                        <div class="value">12.5 Tons</div>
+                    </div>
+                </div>
+                <p>Real-time analytics fetched from blockchain nodes.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Final Approval Modal -->
+<div id="approvalModal" class="modal-overlay">
+    <div class="modal-content">
+        <h3>Final Regulatory Approval</h3>
+        <p id="approvalDeviceName" class="subtitle"></p>
+        
+        <label>Hazard Assessment</label>
+        <select id="hazardRisk">
+            <option>Low - Safe to handle</option>
+            <option>Medium - Requires Caution</option>
+            <option>High - Hazardous Material</option>
+            <option>Critical - Immediate Specialized Care</option>
+        </select>
+
+        <label>Legality Check (Ownership & ID)</label>
+        <select id="legalityCheck">
+            <option value="valid">Legally Verified</option>
+            <option value="invalid">Discrepancy Found - Reject</option>
+        </select>
+
+        <label>Assign to Recycler</label>
+        <select id="assignRecycler">
+            <option value="">Auto-Assign (Based on Location)</option>
+            <option>GreenTech Solutions</option>
+            <option>EcoWaste Corp</option>
+            <option>PureCycle Industries</option>
+        </select>
+
+        <label>Base Price (USD)</label>
+        <input type="number" id="basePrice" placeholder="e.g. 50" min="0">
+
+        <div class="mt-20">
+            <button onclick="approveItem()" style="width: 100%;">Approve for Recycling</button>
+            <button onclick="closeModal()" style="width: 100%; background:#666; margin-top:10px;">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentId = "";
+
+    function showSection(id) {
+        document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
+        document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+        document.getElementById(id).style.display = 'block';
+        document.getElementById('nav-' + id).classList.add('active');
+        if(id === 'verificationQueue') loadQueue();
+        if(id === 'approvedList') loadApproved();
+        if(id === 'overview') updateStats();
+    }
+
+    async function loadQueue() {
+        const response = await fetch('get_submissions.php?role=authority');
+        const result = await response.json();
+        if(!result.success) return;
+
+        const queue = result.submissions.filter(s => s.status === 'Verified');
+        const tbody = document.getElementById('queueTableBody');
+        tbody.innerHTML = '';
+        queue.forEach(s => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${s.id}</td>
+                    <td>${s.device_name}</td>
+                    <td><small>${s.user_email}</small></td>
+                    <td>Verified</td>
+                    <td><button onclick="openApprovalModal('${s.id}', '${s.device_name}')" style="padding: 5px 10px;">Review</button></td>
+                </tr>
+            `;
+        });
+    }
+
+    async function loadApproved() {
+        const response = await fetch('get_submissions.php?role=all');
+        const result = await response.json();
+        if(!result.success) return;
+
+        const approved = result.submissions.filter(s => s.status === 'Approved' || s.status === 'Processing' || s.status === 'Recycled');
+        const tbody = document.getElementById('approvedTableBody');
+        tbody.innerHTML = '';
+        approved.forEach(s => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${s.id}</td>
+                    <td>${s.device_name}</td>
+                    <td>Low</td>
+                    <td><code style="font-size:0.7rem;">${s.blockchain_hash}</code></td>
+                </tr>
+            `;
+        });
+    }
+
+    function openApprovalModal(id, name) {
+        currentId = id;
+        document.getElementById('approvalDeviceName').innerText = "Reviewing: " + name;
+        document.getElementById('approvalModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('approvalModal').style.display = 'none';
+    }
+
+    async function approveItem() {
+        const legality = document.getElementById('legalityCheck').value;
+        const status = (legality === 'invalid') ? 'Rejected' : 'Approved';
+
+        const response = await fetch('update_status.php', {
+            method: 'POST',
+            body: JSON.stringify({
+                id: currentId,
+                status: status
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert('Approval status updated and secured on blockchain ledger.');
+            closeModal();
+            loadQueue();
+        } else {
+            alert(result.message);
+        }
+    }
+
+    async function updateStats() {
+        const response = await fetch('get_submissions.php?role=all');
+        const result = await response.json();
+        if(!result.success) return;
+
+        const submissions = result.submissions;
+        document.getElementById('stat-awaiting').innerText = submissions.filter(s => s.status === 'Verified').length;
+        document.getElementById('stat-approved').innerText = submissions.filter(s => s.status === 'Approved').length;
+    }
+
+    window.onload = () => showSection('overview');
+</script>
+
+</body>
+</html>

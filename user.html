@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard | BlockCycle</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="dashboard-container">
+    <div class="sidebar">
+        <h2>♻️ BlockCycle</h2>
+        <div class="sidebar-nav">
+            <a onclick="showSection('overview')" id="nav-overview" class="active">Dashboard Overview</a>
+            <a onclick="showSection('addWaste')" id="nav-addWaste">Submit E-Waste</a>
+            <a onclick="showSection('myDevices')" id="nav-myDevices">My Submissions</a>
+            <a href="login.html" style="margin-top: 50px; background: rgba(255,0,0,0.1);">Logout</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <!-- OVERVIEW -->
+        <div id="overview" class="section">
+            <div class="card">
+                <h1>Welcome back, <span id="userName">User</span>! 👋</h1>
+                <p>Track your contributions to a greener planet.</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h4>Total Submitted</h4>
+                    <div class="value" id="stat-total">0</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Verified</h4>
+                    <div class="value" id="stat-verified">0</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Recycled</h4>
+                    <div class="value" id="stat-recycled">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADD E-WASTE -->
+        <div id="addWaste" class="section" style="display:none;">
+            <div class="card">
+                <h2>Submit New E-Waste</h2>
+                <form onsubmit="submitWaste(event)">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <label>Device Name</label>
+                            <input type="text" id="dev_name" placeholder="e.g. iPhone 12" required>
+                            
+                            <label>Device Category</label>
+                            <select id="dev_category">
+                                <option>Smartphone</option>
+                                <option>Laptop</option>
+                                <option>Television</option>
+                                <option>Battery</option>
+                                <option>Other</option>
+                            </select>
+
+                            <label>Ownership Proof (Serial No / Bill ID)</label>
+                            <input type="text" id="dev_ownership" placeholder="Enter Serial Number" required>
+                        </div>
+                        <div>
+                            <label>Pickup Location</label>
+                            <textarea id="dev_location" rows="3" placeholder="Full Address" required></textarea>
+
+                            <label>Device Image</label>
+                            <input type="file" id="dev_image" accept="image/*" onchange="previewImage(event)" required>
+                            <img id="imgPreview" class="preview-img" style="display:none;">
+                        </div>
+                    </div>
+                    <button type="submit">Submit for Verification</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- MY DEVICES -->
+        <div id="myDevices" class="section" style="display:none;">
+            <div class="card">
+                <h2>My Submissions</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Device</th>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th>Blockchain Hash</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deviceTableBody">
+                        <!-- Data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    if (!currentUser) window.location.href = 'login.html';
+    document.getElementById('userName').innerText = currentUser.name;
+
+    let imageData = "";
+
+    function previewImage(e) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = () => {
+            imageData = reader.result;
+            const img = document.getElementById("imgPreview");
+            img.src = imageData;
+            img.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function showSection(id) {
+        document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
+        document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+        document.getElementById(id).style.display = 'block';
+        document.getElementById('nav-' + id).classList.add('active');
+        if(id === 'myDevices') loadSubmissions();
+        if(id === 'overview') updateStats();
+    }
+
+    async function submitWaste(e) {
+        e.preventDefault();
+        
+        const data = {
+            user_email: currentUser.email,
+            device_name: document.getElementById('dev_name').value,
+            category: document.getElementById('dev_category').value,
+            ownership: document.getElementById('dev_ownership').value,
+            location: document.getElementById('dev_location').value,
+            image: imageData
+        };
+
+        const response = await fetch('submit_waste.php', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if(result.success) {
+            alert('E-Waste submitted. Private data isolated. Public hash recorded: ' + result.hash);
+            showSection('myDevices');
+        } else {
+            alert(result.message);
+        }
+    }
+
+    async function loadSubmissions() {
+        const response = await fetch(`get_submissions.php?email=${currentUser.email}&role=user`);
+        const result = await response.json();
+        
+        if(!result.success) return;
+
+        const submissions = result.submissions;
+        const tbody = document.getElementById('deviceTableBody');
+        tbody.innerHTML = '';
+
+        submissions.forEach(s => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${s.id}</td>
+                    <td>${s.device_name}</td>
+                    <td>${s.category}</td>
+                    <td><span class="badge badge-${s.status.toLowerCase()}">${s.status}</span></td>
+                    <td><code style="font-size: 0.7rem;">${s.blockchain_hash}</code></td>
+                </tr>
+            `;
+        });
+    }
+
+    async function updateStats() {
+        const response = await fetch(`get_submissions.php?email=${currentUser.email}&role=user`);
+        const result = await response.json();
+        if(!result.success) return;
+
+        const submissions = result.submissions;
+        document.getElementById('stat-total').innerText = submissions.length;
+        document.getElementById('stat-verified').innerText = submissions.filter(s => s.status === 'Verified' || s.status === 'Approved').length;
+        document.getElementById('stat-recycled').innerText = submissions.filter(s => s.status === 'Recycled').length;
+    }
+
+    window.onload = () => {
+        showSection('overview');
+    };
+</script>
+
+</body>
+</html>

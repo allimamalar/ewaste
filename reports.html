@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Reports - BlockCycle</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+    margin:0;
+    font-family: Arial, sans-serif;
+    background:#f4f9f4;
+}
+
+/* Sidebar */
+.sidebar{
+    width:220px;
+    height:100vh;
+    background:#1e6f43;
+    color:white;
+    position:fixed;
+}
+
+.logo{
+    text-align:center;
+    font-size:22px;
+    font-weight:bold;
+    padding:25px 0;
+    border-bottom:1px solid rgba(255,255,255,0.2);
+}
+
+.menu{
+    list-style:none;
+    padding:0;
+}
+
+.menu li{
+    padding:14px 25px;
+    cursor:pointer;
+}
+
+.menu li:hover,
+.menu .active{
+    background:#2d8b57;
+}
+
+/* Main */
+.main{
+    margin-left:260px;
+    padding:30px;
+}
+
+/* Cards */
+.cards{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:20px;
+    margin-bottom:30px;
+}
+
+.card{
+    background:white;
+    padding:20px;
+    border-radius:10px;
+    box-shadow:0 4px 8px rgba(0,0,0,0.1);
+}
+
+.card h3{
+    margin:0;
+    color:#555;
+}
+
+.card p{
+    font-size:24px;
+    color:#1e6f43;
+    font-weight:bold;
+}
+
+/* Charts */
+.chart-box{
+    background:white;
+    padding:20px;
+    border-radius:10px;
+    margin-bottom:30px;
+}
+
+/* Table */
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+}
+
+th, td{
+    padding:10px;
+    border-bottom:1px solid #ddd;
+    text-align:center;
+}
+
+th{
+    background:#1e6f43;
+    color:white;
+}
+
+/* Button */
+.download-btn{
+    padding:10px 18px;
+    background:#1e6f43;
+    color:white;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    margin-bottom:20px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <div class="logo">♻ BlockCycle</div>
+    <ul class="menu">
+        <li onclick="location.href='dashboard.html'">Dashboard</li>
+        <li>Devices</li>
+        <li onclick="location.href='recyclers.html'">Recyclers</li>
+        <li class="active">Reports</li>
+    </ul>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+<h1>Reports & Analytics</h1>
+
+<button class="download-btn" onclick="downloadExcel()">⬇ Download Excel Report</button>
+
+<!-- Summary Cards -->
+<div class="cards">
+    <div class="card">
+        <h3>Total Devices</h3>
+        <p>1528</p>
+    </div>
+
+    <div class="card">
+        <h3>Recycled</h3>
+        <p>914</p>
+    </div>
+
+    <div class="card">
+        <h3>Shipped</h3>
+        <p>287</p>
+    </div>
+</div>
+
+<!-- Chart -->
+<div class="chart-box">
+    <h3>Monthly Recycling Trend</h3>
+    <canvas id="trendChart"></canvas>
+</div>
+
+<!-- Table -->
+<h3>Device Records</h3>
+<table>
+<tr>
+    <th>ID</th>
+    <th>Type</th>
+    <th>Status</th>
+    <th>Recycler</th>
+    <th>Date</th>
+</tr>
+<tr><td>D101</td><td>Laptop</td><td>Recycled</td><td>EcoRecycle</td><td>2026-01-02</td></tr>
+<tr><td>D102</td><td>Mobile</td><td>Shipped</td><td>GreenTech</td><td>2026-01-03</td></tr>
+<tr><td>D103</td><td>Monitor</td><td>In Use</td><td>City Center</td><td>2026-01-05</td></tr>
+<tr><td>D104</td><td>Printer</td><td>Recycled</td><td>EcoRecycle</td><td>2026-01-06</td></tr>
+</table>
+
+</div>
+
+<script>
+/* Chart */
+new Chart(document.getElementById('trendChart'), {
+    type:'line',
+    data:{
+        labels:['Jan','Feb','Mar','Apr','May'],
+        datasets:[{
+            label:'Devices Recycled',
+            data:[120,150,180,210,253]
+        }]
+    }
+});
+
+/* Download Excel */
+function downloadExcel(){
+    window.location.href = "blockcycle_reports_example.xlsx";
+}
+</script>
+
+</body>
+</html>

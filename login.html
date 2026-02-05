@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Login | BlockCycle</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="login-body">
+
+<div class="login-container">
+  <div class="login-card">
+    <h1>♻️ BlockCycle</h1>
+    <p class="subtitle">Secure Login</p>
+
+    <form onsubmit="login(event)">
+      <label>Login As</label>
+      <select id="role" required>
+        <option value="">Select Role</option>
+        <option value="user">User</option>
+        <option value="collector">Collector</option>
+        <option value="authority">Authority</option>
+        <option value="recycler">Recycler</option>
+      </select>
+
+      <label>Email</label>
+      <input type="email" id="email" required>
+
+      <label>Password</label>
+      <input type="password" id="password" required>
+
+      <button type="submit">Login</button>
+    </form>
+
+    <div class="divider">OR</div>
+
+    <button class="btn-google" onclick="googleLogin()">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_Logo.svg" alt="Google">
+      Sign in with Google
+    </button>
+
+    <p class="note">
+      New User? <a href="newuser.html">Create Account</a>
+    </p>
+  </div>
+</div>
+<script>
+async function googleLogin() {
+  const role = document.getElementById("role").value;
+  if (!role) {
+    alert("Please select a role first to sign in with Google");
+    return;
+  }
+  
+  const mockUser = {
+    name: "Google User",
+    email: "user@google.com",
+    role: role,
+    wallet: "0xMockGoogleWallet" + Math.floor(Math.random() * 1000),
+    password: "google_password"
+  };
+
+  // Auto-register mock user for simulation
+  await fetch('register.php', {
+    method: 'POST',
+    body: JSON.stringify(mockUser)
+  });
+
+  const response = await fetch('login.php', {
+    method: 'POST',
+    body: JSON.stringify({email: mockUser.email, password: mockUser.password, role: mockUser.role})
+  });
+  
+  const result = await response.json();
+  if(result.success) {
+    localStorage.setItem("currentUser", JSON.stringify(result.user));
+    alert("Signed in successfully with Google as " + role);
+    window.location.href = role + ".html";
+  }
+}
+
+async function login(e){
+  e.preventDefault();
+
+  const role = document.getElementById("role").value;
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const response = await fetch('login.php', {
+    method: 'POST',
+    body: JSON.stringify({email, password, role})
+  });
+
+  const result = await response.json();
+
+  if(!result.success){
+    alert(result.message || "Invalid credentials or role");
+    return;
+  }
+
+  localStorage.setItem("currentUser", JSON.stringify(result.user));
+  window.location.href = role + ".html";
+}
+</script>
+
+
+</body>
+</html>

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BlockCycle Admin Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f9f4;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 220px;
+    height: 100vh;
+    background: #1e6f43;
+    color: white;
+    position: fixed;
+    padding: 0;
+}
+
+/* MAIN CONTENT — added more left gap */
+.main {
+    margin-left: 280px;
+    padding: 30px;
+}
+
+/* Cards */
+.cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.card h3 {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+}
+
+.card p {
+    font-size: 26px;
+    margin-top: 10px;
+    color: #1e6f43;
+    font-weight: bold;
+}
+
+/* Charts */
+.charts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 30px;
+}
+
+.chart-box {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+/* Smaller donut chart */
+#statusChart {
+    width: 250px !important;
+    height: 250px !important;
+    margin: auto;
+}
+
+/* BlockCycle logo */
+.logo {
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+    padding: 25px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+
+/* Menu */
+.menu {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+}
+
+.menu li {
+    padding: 14px 25px;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+/* Make links look normal */
+.menu li a {
+    text-decoration: none;
+    color: white;
+    display: block;
+}
+
+.menu li:hover,
+.menu .active {
+    background: #2d8b57;
+    border-left: 4px solid #a8e6cf;
+}
+</style>
+</head>
+
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <div class="logo">
+        ♻ BlockCycle
+    </div>
+
+    <ul class="menu">
+        <li class="active"><a href="index.html">Dashboard</a></li>
+        <li><a href="#">Devices</a></li>
+        <li><a href="recyclers.html">Recyclers</a></li>
+        <li><a href="reports.html">Reports</a></li>
+    </ul>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+    <h1>Admin Dashboard</h1>
+    <p>Monitor E-Waste Recycling Data</p>
+
+    <!-- Cards -->
+    <div class="cards">
+        <div class="card">
+            <h3>Total E-Waste Devices</h3>
+            <p>1,528</p>
+        </div>
+
+        <div class="card">
+            <h3>Recycled Devices</h3>
+            <p>914</p>
+        </div>
+
+        <div class="card">
+            <h3>Devices Being Shipped</h3>
+            <p>287</p>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts">
+        <div class="chart-box">
+            <h3>Device Status Overview</h3>
+            <canvas id="statusChart"></canvas>
+        </div>
+
+        <div class="chart-box">
+            <h3>Location-wise Recycling Stats</h3>
+            <canvas id="locationChart"></canvas>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// Donut Chart
+new Chart(document.getElementById('statusChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Recycled', 'Shipped', 'In Use'],
+        datasets: [{
+            data: [914, 287, 327],
+            backgroundColor: ['#2ecc71', '#f1c40f', '#3498db']
+        }]
+    },
+    options: {
+        responsive: false
+    }
+});
+
+// Bar Chart
+new Chart(document.getElementById('locationChart'), {
+    type: 'bar',
+    data: {
+        labels: ['Coimbatore', 'Chennai', 'Trichy', 'Madurai', 'Vellore'],
+        datasets: [{
+            label: 'Devices Recycled',
+            data: [234, 198, 176, 155, 151]
+        }]
+    }
+});
+</script>
+
+</body>
+</html>
